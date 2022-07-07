@@ -2,6 +2,8 @@ package batch
 
 import (
 	"time"
+	"sync"
+	"fmt"
 )
 
 type user struct {
@@ -14,5 +16,41 @@ func getOne(id int64) user {
 }
 
 func getBatch(n int64, pool int64) (res []user) {
-	return nil
+	var wg sync.WaitGroup
+	var mx sync.Mutex
+	sem := make(chan struct{}, pool)
+	var i int64 = 0
+
+	for ; i < n; i++ {
+		wg.Add(1)
+		sem <- struct{}{}
+		if int64(len(sem)) == pool {
+			go func(id int64) {
+				mx.Lock()
+				user := getOne(id)
+				res = append(res, user)
+				mx.Unlock()
+				<-sem
+				wg.Done()
+				}(int64(i))	
+			} else {
+				go func(id int64) {
+					mx.Lock()
+					user := getOne(id)
+					res = append(res, user)
+					mx.Unlock()
+					
+					wg.Done()
+					}(int64(i))	
+			}
+		}
+			
+		wg.Wait()
+	return res
+}
+
+func GetUsers(n int64, pool int64) {
+	u := getBatch(n, pool)
+
+	fmt.Println(u)
 }

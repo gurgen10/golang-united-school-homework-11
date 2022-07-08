@@ -24,7 +24,6 @@ func getBatch(n int64, pool int64) (res []user) {
 	for ; i < n; i++ {
 		wg.Add(1)
 		sem <- struct{}{}
-		if int64(len(sem)) == pool {
 			go func(id int64) {
 				mx.Lock()
 				user := getOne(id)
@@ -33,16 +32,7 @@ func getBatch(n int64, pool int64) (res []user) {
 				<-sem
 				wg.Done()
 				}(int64(i))	
-			} else {
-				go func(id int64) {
-					mx.Lock()
-					user := getOne(id)
-					res = append(res, user)
-					mx.Unlock()
-					
-					wg.Done()
-					}(int64(i))	
-			}
+			
 		}
 			
 		wg.Wait()

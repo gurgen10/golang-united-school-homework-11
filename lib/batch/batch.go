@@ -4,6 +4,8 @@ import (
 	"time"
 	"sync"
 	"fmt"
+	"context"
+	"golang.org/x/sync/errgroup"
 )
 
 type user struct {
@@ -36,6 +38,31 @@ func getBatch(n int64, pool int64) (res []user) {
 		}
 			
 		wg.Wait()
+	return res
+}
+
+func getBatch2(n int64, pool int64) (res []user) {
+	var mx sync.Mutex
+	errg, _ := errgroup.WithContext(context.Background())
+	
+	errg.SetLimit(int(pool))
+	var i int64 = 0
+
+	for ; i < n; i++ {
+		func(i int64) {
+			errg.Go(func() error {
+				u := getOne(i)
+				mx.Lock()
+				res = append(res, u)
+				mx.Unlock()
+
+				return nil
+			})
+		}(i)
+	}
+
+	errg.Wait()
+
 	return res
 }
 
